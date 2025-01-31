@@ -1,0 +1,25 @@
+{% extends "base_generic.html" %}
+
+{% block content %}
+{% for message in messages %}  
+
+      <div class="alert alert-{{message.tags}}" role="alert" style="margin-top: 30px">
+        <h5>{{message}}</h5>
+      </div>
+        
+{% endfor %}
+<div style="margin-left:5%;margin-right:5%;">
+    <form action="" method='POST'>
+        {% csrf_token %}
+        <h3><strong>Resend OTP</strong></h3>
+        <div class="mb-3">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-control" name="otp_email" placeholder="Enter email-address">
+          </div>
+
+          <button class="btn btn-primary" style="width:100%">Send OTP</button>
+          {% comment %} <p>Need a new OTP? <a href="">Resend OTP</a></p> {% endcomment %}
+
+    </form>
+</div>
+{% endblock %}

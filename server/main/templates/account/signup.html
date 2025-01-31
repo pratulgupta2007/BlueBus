@@ -1,0 +1,48 @@
+{% extends "base_generic.html" %}
+{% load socialaccount %}
+
+{% block content %}
+<div class="flex justify-center items-center min-h-screen bg-gray-100">
+  <div class="w-full max-w-md bg-white shadow-lg rounded-lg p-8">
+    <div class="text-center mb-6">
+      <h2 class="text-2xl font-bold text-gray-800">Sign Up</h2>
+      <p class="text-gray-600">Already have an account? <a href="{% url 'account_login' %}" class="text-blue-500 hover:underline">Login</a></p>
+    </div>
+    <form method="post" action="{% url 'account_signup' %}">
+      {% csrf_token %}
+      <div class="mb-4">
+        <label for="id_email" class="block text-gray-700">Email</label>
+        <input class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" type="email" name="email" autofocus autocapitalize="none" autocomplete="email" minlength="1" maxlength="320" required id="id_email" placeholder="Email">
+        {% if form.errors.email %}
+        <div class="mt-2 text-red-600">
+          {{ form.errors.email }}
+        </div>
+        {% endif %}
+      </div>
+      <div class="mb-4">
+        <label for="id_password1" class="block text-gray-700">Password</label>
+        <input class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" type="password" name="password1" autocomplete="new-password" required id="id_password1" placeholder="Password">
+        {% if form.errors.password1 %}
+        <div class="mt-2 text-red-600">
+          {{ form.errors.password1 }}
+        </div>
+        {% endif %}
+      </div>
+      <div class="mb-4">
+        <label for="id_password2" class="block text-gray-700">Confirm Password</label>
+        <input class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" type="password" name="password2" autocomplete="new-password" required id="id_password2" placeholder="Confirm Password">
+        {% if form.errors.password2 %}
+        <div class="mt-2 text-red-600">
+          {{ form.errors.password2 }}
+        </div>
+        {% endif %}
+      </div>
+      <div class="text-center mb-4">
+        <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Sign Up</button>
+      </div>
+    </form>
+  </div>
+  
+  
+</div>
+{% endblock %}

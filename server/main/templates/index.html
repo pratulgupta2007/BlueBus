@@ -1,0 +1,15 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}Home - Blue Bus{% endblock %}
+
+{% block content %}
+<div class="relative">
+    <img src="{% static 'home_bg.png' %}" alt="Bus" class="w-full h-96 object-cover">
+    <div id="hero" class="absolute inset-0 m-24 flex flex-col items-center justify-center bg-blue-600 bg-opacity-90 text-white py-8 px-6 rounded-lg">
+        <h2 class="text-4xl font-bold">Your Journey Begins Here</h2>
+        <p class="my-4 text-lg">Book your bus tickets easily and travel comfortably with Blue Bus.</p>
+        <a href="/book" class="btn bg-white text-blue-600 py-2 px-4 rounded">Book Now</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base_generic.html" %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl p-8 bg-white shadow-lg rounded-lg mt-8">
+  <h4 class="text-2xl font-bold text-gray-800 mb-4">
+    <center>
+        Hi,
+        {% if user.first_name %}
+        {{ user.first_name }} {{ user.last_name }}
+        {% else %}
+        Guest
+        {% endif %}
+    </center>
+  </h4>
+  <table class="min-w-full bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <tbody>
+      <tr class="border-t border-gray-200">
+        <td class="py-3 px-4 font-semibold text-gray-700">Balance:</td>
+        <td class="py-3 px-4 text-gray-700">{{balance}}</td>
+        <td class="py-3 px-4">
+          <a href="{% url 'balanceview' %}" class="bg-blue-600 text-white py-2 w-full rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 inline-block text-center">Add Balance</a>
+        </td>
+      </tr>
+      <tr class="border-t border-gray-200">
+        <td class="py-3 px-4 font-semibold text-gray-700">Email:</td>
+        <td class="py-3 px-4 text-gray-700">
+          {% if user.email %}
+            {{ user.email }}
+          {% else %}
+            Email not added.
+          {% endif %}
+        </td>
+        <td class="py-3 px-4">
+          <a href="{% url 'account_email' %}" class="bg-blue-600 text-white py-2 w-full rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 inline-block text-center">Edit</a>
+        </td>
+      </tr>
+      <tr class="border-t border-gray-200">
+        <td class="py-3 px-4 font-semibold text-gray-700">Password Settings:</td>
+        <td class="py-3 px-4"></td>
+        <td class="py-3 px-4">
+          <a href="{% url 'account_change_password' %}" class="bg-blue-600 text-white py-2 w-full rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 inline-block text-center">Edit</a>
+        </td>
+      </tr>
+      <tr class="border-t border-gray-200">
+        <td class="py-3 px-4 font-semibold text-gray-700">Google Linking Settings:</td>
+        <td class="py-3 px-4"></td>
+        <td class="py-3 px-4">
+          <a href="{% url 'socialaccount_connections' %}" class="bg-blue-600 text-white py-2 w-full rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 inline-block text-center">Edit</a>
+        </td>
+      </tr>
+      <tr class="border-t border-gray-200">
+        <td class="py-3 px-4 font-semibold text-gray-700">Tickets:</td>
+        <td class="py-3 px-4"></td>
+        <td class="py-3 px-4">
+          <a href="{% url 'ticketslist' %}" class="bg-blue-600 text-white py-2 w-full rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 inline-block text-center">View</a>
+        </td>
+      </tr>
+      <tr class="border-t border-gray-200">
+        <td class="py-3 px-4 font-semibold text-gray-700">Transactions:</td>
+        <td class="py-3 px-4"></td>
+        <td class="py-3 px-4">
+          <a href="{% url 'transactions' %}" class="bg-blue-600 text-white py-2 w-full rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 inline-block text-center">View</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="text-center mt-8">
+    <form id="logout-form" method="post" action="{% url 'account_logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 inline-block text-center w-1/2 mx-auto">Logout</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base_generic.html" %}
+
+{% block content %}
+{% load socialaccount %}
+
+<div class="flex justify-center items-center min-h-screen bg-gray-100">
+  <div class="w-full max-w-md bg-white shadow-lg rounded-lg p-8">
+    <div class="text-center mb-6">
+      <h2 class="text-2xl font-bold text-gray-800">Login</h2>
+      <p class="text-gray-600">Don't have an account? <a href="{% url 'account_signup' %}" class="text-blue-500 hover:underline">Sign Up</a></p>
+    </div>
+    <form method="post" action="{% url 'account_login' %}">
+      {% csrf_token %}
+      <div class="mb-4">
+        <input class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" type="text" name="login" autofocus autocapitalize="none" autocomplete="email" maxlength="150" required id="id_email" placeholder="Email">
+      </div>
+      <div class="mb-4">
+        <input type="password" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" name="password" autocomplete="current-password" required id="id_password" placeholder="Password">
+      </div>
+      <div class="mb-4 flex items-center">
+        <input type="checkbox" id="id_remember" name="remember" class="mr-2">
+        <label for="id_remember" class="text-gray-700">Remember Me</label>
+      </div>
+      {% if form.errors %}
+      <div class="mb-4 text-red-600">
+        Your email and password didn't match.
+      </div>
+      {% endif %}
+      {% if next %}
+        {% if user.is_authenticated %}
+        <div class="mb-4 text-red-600">
+          Your account doesn't have access to this page. To proceed, please login with an account that has access.
+        </div>
+        {% endif %}
+      {% endif %}
+      <div class="text-center mb-2">
+        <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Submit</button>
+        <input type="hidden" name="next" value="{{ next }}">
+      </div>
+      <div class="mb-2">
+        <a href="{% provider_login_url 'google' %}" class="w-full bg-white text-black-600 border border-black-600 py-2 px-4 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500 inline-block text-center">Login with Google</a>
+      </div>
+      <div class="mb-4 text-center">
+        <a href="{% url 'account_reset_password' %}" class="text-blue-500 hover:underline">Lost password?</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

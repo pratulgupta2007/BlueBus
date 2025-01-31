@@ -1,0 +1,49 @@
+{% extends "base_generic.html" %}
+
+{% block content %}
+
+<div class="mx-5 my-10">
+        <center><h2 class="text-3xl font-bold text-gray-800 mb-5">Transactions</h2></center>
+    <div class="overflow-x-auto shadow-md rounded-lg">
+        <table class="min-w-full bg-white border border-gray-200">
+            <thead class="bg-indigo-600 text-white">
+                <tr>
+                    <th class="py-3 px-6 border-b border-gray-200 text-left">Transaction ID</th>
+                    <th class="py-3 px-6 border-b border-gray-200 text-left">Sending ID</th>
+                    <th class="py-3 px-6 border-b border-gray-200 text-left">Receiving ID</th>
+                    <th class="py-3 px-6 border-b border-gray-200 text-left">Amount</th>
+                    <th class="py-3 px-6 border-b border-gray-200 text-left">Status</th>
+                    <th class="py-3 px-6 border-b border-gray-200 text-left">Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr class="hover:bg-gray-100">
+                    <td class="py-3 px-6 border-b border-gray-200">{{ transaction.transactionsID }}</td>
+                    <td class="py-3 px-6 border-b border-gray-200">{{ transaction.sendingID }}</td>
+                    <td class="py-3 px-6 border-b border-gray-200">{{ transaction.receivingID }}</td>
+                    <td class="py-3 px-6 border-b border-gray-200">{{ transaction.amount }}</td>
+                    <td class="py-3 px-6 border-b border-gray-200">
+                        {% if transaction.status == "R" %}
+                        <span class="px-2 py-1 font-semibold leading-tight text-red-700 bg-red-100 rounded-full">
+                            {{ transaction.get_status_display }}
+                        </span>
+                        {% elif transaction.status == "I" %}
+                        <span class="px-2 py-1 font-semibold leading-tight text-yellow-700 bg-yellow-100 rounded-full">
+                            {{ transaction.get_status_display }}
+                        </span>
+                        {% elif transaction.status == "C" %}
+                        <span class="px-2 py-1 font-semibold leading-tight text-green-700 bg-green-100 rounded-full">
+                            {{ transaction.get_status_display }}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="py-3 px-6 border-b border-gray-200">{{ transaction.date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
