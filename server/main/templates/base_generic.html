@@ -7,28 +7,37 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     {% load static %}
 </head>
-<body class="bg-gray-100 text-gray-900">
-    <header class="bg-gray-800 text-white p-4 flex items-center justify-between">
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-black text-white p-4 flex items-center justify-between shadow-md">
         <div class="flex items-center">
             <img src="{% static 'logo.png' %}" alt="Blue Bus Logo" class="h-10 mr-4">
-            <a href="/" class="text-2xl hover:underline" style="padding-right:10px;"><strong>Home</strong></a>
+            <a href="/" class="text-2xl font-bold hover:underline mr-6">Home</a>
             <a href="/book" class="text-xl hover:underline">Book</a>
         </div>
         <div>
             {% if user.is_authenticated %}
-                <span class="text-xl mr-4">
-                    {% if user.first_name %}
-                    {{ user.first_name }} {{ user.last_name }}
-                    {% else %}
-                    Guest
-                    {% endif %}</span>
-                <a href="/logout" class="text-xl hover:underline">Logout</a>
+            <a class="text-xl mr-4 hover:underline" aria-current="page" href="{% url 'profile' %}">
+                {% if user.first_name %}
+                {{ user.first_name }} {{ user.last_name }}
+                {% else %}
+                Guest
+                {% endif %}
+            </a>
             {% else %}
                 <a href="{% url 'account_login' %}?next={{ request.path }}" class="text-xl hover:underline">Login</a>
             {% endif %}
         </div>
     </header>
     <main class="p-4">
+        {% if messages %}
+        <div class="max-w-4xl mx-auto mb-4" style = "padding-top:20px;">
+            <ul>
+                {% for message in messages %}
+                    <li class="mb-2 p-2 rounded {% if message.tags == 'error' %} bg-red-100 text-red-800 {% elif message.tags == 'success' %} bg-green-100 text-green-800 {% elif message.tags == 'warning' %} bg-yellow-100 text-yellow-800 {% elif message.tags == 'info' %} bg-blue-100 text-blue-800 {% endif %}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
         {% block content %}{% endblock %}
     </main>
 </body>

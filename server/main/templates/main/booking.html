@@ -1,0 +1,40 @@
+{% extends "base_generic.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-8 my-8">
+    <h2 class="text-3xl font-semibold mb-6 text-center text-blue-600">Booking Details</h2>
+    <div class="mb-6">
+        <h3 class="text-2xl font-bold text-gray-800">{{ route.bus.company }}</h3>
+        <p class="text-gray-600">Route Number: {{ route.route_number }}</p>
+        <p class="text-gray-600">From: {{ start.stop.name }}</p>
+        <p class="text-gray-600">To: {{ end.stop.name }}</p>
+        <p class="text-gray-600">Departure: {{ start.departure_time }}</p>
+        <p class="text-gray-600">Arrival: {{ end.arrival_time }}</p>
+    </div>
+    <div class="mb-6">
+        <form method="post" class="space-y-4 mt-4">
+            {% csrf_token %}
+        <h4 class="text-xl font-semibold text-gray-800">Available Seats</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+            {% for seat, available in seats%}
+                <div class="bg-gray-100 p-4 rounded-lg shadow-md">
+                    <p class="text-lg font-medium text-gray-700">{{ seat.seat.seat.type }}</p>
+                    <p class="text-gray-600">Price: &#8377;{{ seat.price }}</p>
+                    <p class="text-gray-600">Available: {{ available }}</p>
+                        <div>
+                            <label for="{{ seat.id }}" class="block text-lg font-medium text-gray-700">Number of Tickets</label>
+                            <input type="number" name="{{seat.id}}" id="{{seat.id}}" class="mt-2 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 h-12 px-4" placeholder="0" min="1" max="{{ available }}">
+                        </div>
+                    
+                </div>
+            {% endfor %}
+        
+        </div>
+        <div class="flex justify-center">
+            <input type="hidden" name="formvalue" value="1">
+            <button type="submit" class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300">Book Now</button>
+        </div>
+    </form>
+    </div>
+</div>
+{% endblock %}
