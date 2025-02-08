@@ -5,20 +5,23 @@
 <div class="mx-auto max-w-4xl p-8 bg-white shadow-lg rounded-lg mt-8">
     <h4 class="text-3xl font-bold text-center text-gray-800 mb-6">Tickets</h4>
     <div class="space-y-8">
-        {% for ticket in tickets %}
+        {% for booking in bookings %}
         <div class="bg-gray-100 p-6 rounded-lg shadow-md">
             <div class="flex justify-between items-center mb-4">
-                <h5 class="text-xl font-semibold text-gray-800">Movie: {{ticket.show.movie.movie}} {{ticket.show.language}}-{{ticket.show.type}}</h5>
-                <h5 class="text-xl font-semibold text-gray-800">Count: {{ticket.count}}</h5>
-                <a class="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500" href="food/{{ticket.ticketID}}">Pre-order food</a>
+                <h5 class="text-xl font-semibold text-gray-800">Bus: {{ booking.bus.license_plate }}</h5>
+                <h5 class="text-xl font-semibold text-gray-800">Count: {{ booking.countTickets }}</h5>
+                <a class="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500" href="passengerinfo/{{ booking.temp_id }}">Edit passenger information</a>
             </div>
             <div class="flex justify-between items-center mb-4">
-                <h5 class="text-xl font-semibold text-gray-800">Theater: {{ticket.show.adminID}}</h5>
-                <h5 class="text-xl font-semibold text-gray-800">Total: &#x20b9;{{ticket.total}}</h5>
-                <a class="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500" href="refund/{{ticket.ticketID}}">Refund</a>
+                <h5 class="text-xl font-semibold text-gray-800">Company: {{ booking.bus.company.company_name }}</h5>
+                <h5 class="text-xl font-semibold text-gray-800">Total: &#x20b9;{{ booking.total_price }}</h5>
+                <a class="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500" href="refund/{{ booking.temp_id }}">Refund</a>
             </div>
             <div class="flex justify-between items-center">
-                <h5 class="text-xl font-semibold text-gray-800">Time: {{ticket.show.get_time}} on {{ticket.show.get_date}}</h5>
+                <h5 class="text-xl font-semibold text-gray-800">From: {{ booking.start_stop.stop.name }} on {{ booking.getDepartureTime }}, {{ booking.getDepartureDate }}</h5>
+            </div>
+            <div class="flex justify-between items-center">
+                <h5 class="text-xl font-semibold text-gray-800">To: {{ booking.end_stop.stop.name }} on {{ booking.getArrivalTime }}, {{ booking.getArrivalDate }}</h5>
             </div>
         </div>
         <hr class="my-4">

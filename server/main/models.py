@@ -9,6 +9,8 @@ import datetime
 
 from django.core.exceptions import ValidationError
 
+from django.contrib import messages
+
 # Create your models here.
 class Wallet(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='wallet')
@@ -40,10 +42,35 @@ class Transaction(models.Model):
         ],
         default='I',
     )
+    old_status = None
     date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return str(self.transactionID)
+    
+    def __init__(self, *args, **kwargs) :
+        super().__init__(*args, **kwargs)
+        self.old_status = self.status
+
+    def _loaded_values(self):
+        return Transaction.objects.get(pk=self.pk)
+
+    def save(self, *args, **kwargs):
+        if self.status == "C" and (self.old_status == "I" or self.old_status == "R"):
+            self.sendingID.balance -= self.amount
+            self.sendingID.save()
+
+            self.receivingID.balance += self.amount
+            self.receivingID.save()
+        elif self.status == "R" and self.old_status == "C":
+            self.sendingID.balance += self.amount
+            self.sendingID.save()
+
+            self.receivingID.balance -= self.amount
+            self.receivingID.save()
+
+        super().save(*args, **kwargs)
+        self.old_status = self.status
 
 class AdminUser(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='adminuser')
@@ -125,24 +152,40 @@ class Route_Seat(models.Model):
     def __str__(self):
         return str(self.route.route_number) + ' - ' + str(self.seat.seat.type)
     
-    def getAvailableSeats(self, date):
-        return self.seat.max_seats - self.booked_seats(date)
+    def getAvailableSeats(self, date, start, end):
+        return self.seat.max_seats - self.booked_seats(date, start, end)
     
-    def booked_seats(self, date):
-        tickets = Ticket.objects.filter(Q(seat_type=self.seat.seat.type) & Q(booking__start_stop__route=self.route) & Q(booking__date = date)).count()
-        return tickets
+    def booked_seats(self, date, start, end):
+        tickets = Ticket.objects.filter(Q(seat_type=self.seat.seat.type) & 
+                                        Q(booking__start_stop__route=self.route) & Q(booking__date = date) &
+                                        Q(booking__verified=True))
+        print(tickets)
+        count = 0
+        for ticket in tickets:
+            if ticket.booking.end_stop.order <= start.order:
+                pass
+            elif ticket.booking.start_stop.order >= end.order:
+                pass
+            else:
+                count += 1
+        return count
     
     def clean(self):
         super().clean()
         if self.price <= 0:
             raise ValidationError('Price should be greater than or equal to 0')
     
-    def save(self, date, *args, **kwargs):
-        if self.price <= 0:
-            raise ValidationError('Price should be greater than or equal to 0')
-        if self.booked_seats(date) > self.seat.max_seats:
-            raise ValidationError('Booked seats should be less than or equal to max seats')
-        super().save(*args, **kwargs)
+    def delete_model(self, request, obj):
+        try:
+            return super().delete_model(request, obj)
+        except ValidationError as e:
+            self.message_user(request, str(e.message), messages.ERROR)
+            return
+    
+    def delete(self, *args, **kwargs):
+        if Booking.objects.filter(Q(bus=self.route.bus) & Q(date__date__gte=timezone.now().date()) & Q(verified=True)).count() > 0:
+            raise ValidationError('Cannot delete seats after bookings have been made')
+        super().delete(*args, **kwargs)
 
 
 
@@ -154,6 +197,9 @@ class Route(models.Model):
     seats = models.ManyToManyField(Bus_Seat, through='Route_Seat')
     active = models.BooleanField(default=True)
 
+    def _str_(self):
+        return str(self.route_number) + ' - ' + str(self.bus.license_plate)
+    
     def verified(self):
         return Route_Stops.objects.filter(route=self).count() == self.stop_count and self.stop_count > 1 and self.seats.count() > 0 and self.active
 
@@ -169,16 +215,27 @@ class Route(models.Model):
         prices = Route_Seat.objects.filter(route=self)
         return prices.aggregate(models.Min('price'))['price__min']
     
-    def getAvailableSeats(self, date):
+    def getAvailableSeats(self, date, start, end):
         max = sum([seat.max_seats for seat in self.bus.getSeats()])
-        booked = sum([seat.booked_seats(date) for seat in self.getSeats()])
+        booked = sum([seat.booked_seats(date, start, end) for seat in self.getSeats()])
         return max - booked
-
     
     def clean(self):
         super().clean()
         if self.stop_count < 2:
             raise ValidationError('Stop count should be greater than or equal to 2')
+    
+    def delete_model(self, request, obj):
+        try:
+            return super().delete_model(request, obj)
+        except ValidationError as e:
+            self.message_user(request, str(e.message), messages.ERROR)
+            return
+    
+    def delete(self, *args, **kwargs):
+        for booking in Booking.objects.filter(Q(bus=self.bus) & Q(date__date__gte=timezone.now().date()) & Q(verified=True)):
+            booking.revertTicket()
+        super().delete(*args, **kwargs)
 
 class Route_Stops(models.Model):
     route = models.ForeignKey(Route, on_delete=models.CASCADE)
@@ -212,6 +269,9 @@ class Route_Stops(models.Model):
     
     def __str__(self):
         return str(self.route.route_number) + ' - ' + str(self.stop.name)
+    
+    def _loaded_values(self):
+        return Route_Stops.objects.get(pk=self.pk)
     
     def clean(self):
         super().clean()
@@ -272,8 +332,28 @@ class Route_Stops(models.Model):
                                     raise ValidationError('Route overlapping')
                             else:
                                 raise ValidationError('Route overlapping')
+            
+            try:
+                if self.arrival_day != self._loaded_values().arrival_day or self.departure_day != self._loaded_values().departure_day or self.arrival_time != self._loaded_values().arrival_time or self.departure_time != self._loaded_values().departure_time:
+                    if Booking.objects.filter(Q(bus=self.route.bus) & Q(date__date__gte=timezone.now().date()) & Q(verified=True)).count() > 0:
+                        raise ValidationError('Cannot change stops after bookings have been made')
+            except Route_Stops.DoesNotExist:
+                pass
         except ValueError:
             raise ValidationError('Invalid day format')
+    
+    def delete_model(self, request, obj):
+        try:
+            return super().delete_model(request, obj)
+        except ValidationError as e:
+            self.message_user(request, str(e.message), messages.ERROR)
+            return
+    
+    def delete(self, *args, **kwargs):
+        if Booking.objects.filter(Q(bus=self.route.bus) & Q(date__date__gte=timezone.now().date()) & Q(verified=True)).count() > 0:
+            raise ValidationError('Cannot delete stops after bookings have been made')
+        super().delete(*args, **kwargs)
+    
 
 class Booking(models.Model):
     temp_id = models.UUIDField(default=uuid.uuid4, unique=True)
@@ -285,9 +365,59 @@ class Booking(models.Model):
     end_stop = models.ForeignKey(Route_Stops, on_delete=models.CASCADE, related_name='end_stop')
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     verified = models.BooleanField(default=False)
+    old_verified = models.BooleanField(default=False)
 
     def getDate(self):
-        return self.date.date()
+        return timezone.localtime(self.date).date()
+    
+    def getDepartureTime(self):
+        return self.start_stop.departure_time.strftime("%I:%M %p")
+    
+    def getArrivalTime(self):
+        return self.end_stop.arrival_time.strftime("%I:%M %p")
+    
+    def __init__(self, *args, **kwargs) :
+        super().__init__(*args, **kwargs)
+        self.old_verified = self.verified
+
+    def _loaded_values(self):
+        return Booking.objects.get(pk=self.pk)
+    
+    def countTickets(self):
+        tickets = Ticket.objects.filter(booking=self)
+        return tickets.count()
+    
+    def getDepartureDate(self):
+        return self.getDate().strftime("%b %d")
+    
+    def getArrivalDate(self):
+        day_offset = int(self.end_stop.arrival_day) - self.getDate().isoweekday()
+        arrival_day = self.getDate() + datetime.timedelta(days=day_offset)
+        arrival_day = arrival_day.strftime("%b %d")
+        return arrival_day
+    
+    def save(self, *args, **kwargs):
+        if self.verified == True and self.old_verified == False:
+            if (timezone.make_aware(datetime.datetime.combine(self.date.date(), self.start_stop.departure_time)) - timezone.now()).total_seconds() < 6 * 3600:
+                raise ValidationError('Departure passed')
+            self.transaction.status = "C"
+            self.transaction.save()
+
+        elif self.verified == False and self.old_verified == True:
+            self.transaction.status = "R"
+            self.transaction.save()
+        super().save(*args, **kwargs)
+        self.old_verified = self.verified
+    
+    def revertTicket(self):
+        if (timezone.make_aware(datetime.datetime.combine(self.date.date(), self.start_stop.departure_time)) - timezone.now()).total_seconds() < 6 * 3600:
+            raise ValidationError('Cannot delete booking within 6 hours of departure')
+        self.verified = False
+        self.save()
+    
+    def __str__(self):
+        return str(self.user) + ' - ' + str(self.bus.license_plate) + ' - ' + str(self.getDate())
+
 
 class Ticket(models.Model):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE)
@@ -303,6 +433,9 @@ class Ticket(models.Model):
             ('O', 'Other')
         ],
         null=True)
+
+    def __str__(self):
+        return str(self.booking) + ' - ' + str(self.name)
 
 class OtpToken(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

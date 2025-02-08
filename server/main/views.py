@@ -30,6 +30,10 @@ from django.conf import settings
 
 from .decorators import user_passes_test_with_logout
 
+from collections import defaultdict
+
+from django.utils import timezone
+
 def getDuration(departure_time, arrival_time):
     duration = arrival_time - departure_time
     hours, remainder = divmod(duration.seconds, 3600)
@@ -49,18 +53,18 @@ def searchView(request):
         to_location = request.GET.get("to")
         travel_date = request.GET.get("date")
 
-        if datetime.datetime.strptime(travel_date, '%Y-%m-%d').date() < datetime.datetime.now().date():
+        if timezone.make_aware(datetime.datetime.strptime(travel_date, '%Y-%m-%d')).date() < timezone.now().date():
             messages.error(request, "Invalid Date")
             return render(request, "main/book.html")
         elif from_location == to_location:
             messages.error(request, "Invalid Locations")
             return render(request, "main/book.html")
 
-        travel_day = str(datetime.datetime.strptime(travel_date, '%Y-%m-%d').isoweekday())
+        travel_day = str(timezone.make_aware(datetime.datetime.strptime(travel_date, '%Y-%m-%d')).isoweekday())
 
-        if datetime.datetime.strptime(travel_date, '%Y-%m-%d').date() == datetime.datetime.now().date():
+        if timezone.make_aware(datetime.datetime.strptime(travel_date, '%Y-%m-%d')).date() == timezone.now().date():
             routes_leaving = Route_Stops.objects.filter(
-                Q(stop__name=from_location) & Q(arrival_day=travel_day) & Q(departure_time__gte=datetime.datetime.now().time())
+                Q(stop__name=from_location) & Q(arrival_day=travel_day) & Q(departure_time__gte=timezone.now().time())
             )
         else:
             routes_leaving = Route_Stops.objects.filter(Q(stop__name=from_location) & Q(arrival_day=travel_day))
@@ -74,21 +78,22 @@ def searchView(request):
                 if (route_leaving.route == route_reaching.route) and (route_leaving.order < route_reaching.order) and (route_leaving.route.verified() == True):
                     
                     route = route_leaving.route
-                    departure_time = datetime.datetime.combine(datetime.date.today(), route_leaving.departure_time)
-                    arrival_time = datetime.datetime.combine(datetime.date.today(), route_reaching.arrival_time)
+                    departure_time = datetime.datetime.combine(timezone.now().date(), route_leaving.departure_time)
+                    arrival_time = datetime.datetime.combine(timezone.now().date(), route_reaching.arrival_time)
                     duration_str = getDuration(departure_time, arrival_time)
 
                     departure_time_12hr = route_leaving.departure_time.strftime("%I:%M %p")
                     arrival_time_12hr = route_reaching.arrival_time.strftime("%I:%M %p")
 
-                    day_offset = int(route_leaving.departure_day) - int(travel_day)
-                    arrival_day = datetime.datetime.strptime(travel_date, '%Y-%m-%d').date() + datetime.timedelta(days=day_offset)
+                    day_offset = int(route_reaching.arrival_day) - int(travel_day)
+                    arrival_day = timezone.make_aware(datetime.datetime.strptime(travel_date, '%Y-%m-%d')).date() + datetime.timedelta(days=day_offset)
                     arrival_day = arrival_day.strftime("%b %d")
 
 
                     buses.append([route, departure_time_12hr, arrival_time_12hr, 
                                   duration_str, arrival_day,
-                                  route.getStartingPrice(), route.getAvailableSeats(datetime.datetime.strptime(travel_date, '%Y-%m-%d'))])    
+                                  route.getStartingPrice(), route.getAvailableSeats(timezone.make_aware(datetime.datetime.strptime(travel_date, '%Y-%m-%d')), 
+                                                                                    start = route_leaving, end = route_reaching)])    
 
         context = {
             "buses": buses,
@@ -118,14 +123,14 @@ def bookingView(request, route_id, start_stop, end_stop, date):
                 messages.error(request, "Invalid Stops")
                 return render(request, "blank.html")
 
-            if datetime.datetime.strptime(date, '%Y-%m-%d').date() < datetime.datetime.now().date():
+            if datetime.datetime.strptime(date, '%Y-%m-%d').date() < timezone.now().date():
                 messages.error(request, "Invalid Date")
                 return render(request, "blank.html")
             elif start == end:
                 messages.error(request, "Invalid Locations")
                 return render(request, "blank.html")
 
-            travel_day = str(datetime.datetime.strptime(date, '%Y-%m-%d').isoweekday())
+            travel_day = str(timezone.make_aware(datetime.datetime.strptime(date, '%Y-%m-%d')).isoweekday())
 
             if int(start.arrival_day) != int(travel_day):
                 messages.error(request, "Invalid Day")
@@ -164,7 +169,7 @@ def bookingView(request, route_id, start_stop, end_stop, date):
                 start_stop = start,
                 end_stop = end,
                 total_price = price,
-                date = datetime.datetime.strptime(date, '%Y-%m-%d')
+                date = timezone.make_aware(datetime.datetime.strptime(date, '%Y-%m-%d'))
             )
 
             for type in seats_booked.keys():
@@ -195,14 +200,14 @@ def bookingView(request, route_id, start_stop, end_stop, date):
         messages.error(request, "Invalid Stops")
         return render(request, "blank.html")
     
-    if datetime.datetime.strptime(date, '%Y-%m-%d').date() < datetime.datetime.now().date():
+    if timezone.make_aware(datetime.datetime.strptime(date, '%Y-%m-%d')).date() < timezone.now().date():
             messages.error(request, "Invalid Date")
             return render(request, "blank.html")
     elif start == end:
         messages.error(request, "Invalid Locations")
         return render(request, "blank.html")
 
-    travel_day = str(datetime.datetime.strptime(date, '%Y-%m-%d').isoweekday())
+    travel_day = str(timezone.make_aware(datetime.datetime.strptime(date, '%Y-%m-%d')).isoweekday())
 
     if int(start.arrival_day) != int(travel_day):
         messages.error(request, "Invalid Day")
@@ -212,24 +217,29 @@ def bookingView(request, route_id, start_stop, end_stop, date):
         "route": route,
         "start": start,
         "end": end,
-        "seats": [(seat, seat.getAvailableSeats(datetime.datetime.strptime(date, '%Y-%m-%d'))) for seat in route.getSeats()],
+        "seats": [(seat, seat.getAvailableSeats(timezone.make_aware(datetime.datetime.strptime(date, '%Y-%m-%d')), start = start, end = end)) 
+                  for seat in route.getSeats()],
     }
     return render(request, "main/booking.html", context=context)
 
 def verificationView(request, booking_id):
-
-    if request.method == "POST":
-        with transaction.atomic():
-            try:
-                booking = Booking.objects.get(temp_id=booking_id)
-            except Booking.DoesNotExist:
-                messages.error(request, "Invalid Booking")
-                return render(request, "blank.html")
-            
-            if booking.user != request.user:
-                messages.error(request, "Access Denied")
-                return render(request, "blank.html")
-            
+    
+    with transaction.atomic():
+        try:
+            booking = Booking.objects.get(temp_id=booking_id)
+        except Booking.DoesNotExist:
+            messages.error(request, "Invalid Booking")
+            return render(request, "blank.html")
+        
+        if booking.user != request.user:
+            messages.error(request, "Access Denied")
+            return render(request, "blank.html")
+        
+        if booking.transaction is not None:
+            messages.error(request, "Booking Already Verified")
+            return redirect("bookinglist")
+        
+        if request.method == "POST":
             otp = request.POST.get("otp_code")
             otp_token = OtpToken.objects.filter(booking=booking).first()
             if otp_token.otp == otp and otp_token.is_valid():
@@ -248,7 +258,7 @@ def verificationView(request, booking_id):
                 try:
                     for ticket in ticketlist:
                         routeseat = Route_Seat.objects.filter(route=booking.start_stop.route).filter(seat__seat__type=ticket.seat_type).first()
-                        if routeseat.getAvailableSeats(booking.date) <= 0:
+                        if routeseat.getAvailableSeats(booking.date, start = booking.start_stop, end = booking.end_stop) <= 0:
                             raise IntegrityError
                 except IntegrityError or ValidationError:
                     booking.delete()
@@ -273,22 +283,11 @@ def verificationView(request, booking_id):
                 booking.save()
 
                 messages.success(request, "Booking Successful")
-                return redirect("bookinglist")
+                return redirect("passengerinfo", booking_id=booking_id)
             else:
                 messages.error(request, "Invalid OTP")
                 return render(request, "main/verification.html", context={"booking":booking})
-    
-    with transaction.atomic():
-        try:
-            booking = Booking.objects.get(temp_id=booking_id)
-        except Booking.DoesNotExist:
-            messages.error(request, "Invalid Booking")
-            return render(request, "blank.html")
-        
-        if booking.user != request.user:
-            messages.error(request, "Access Denied")
-            return render(request, "blank.html")
-        
+
         try:
             otp = OtpToken.objects.get(booking=booking, user=request.user)
             otp.delete()
@@ -316,6 +315,69 @@ def verificationView(request, booking_id):
         }
 
         return render(request, "main/verification.html", context = context)
+
+def passengerInfo(request, booking_id):
+    
+    try:
+        booking = Booking.objects.get(temp_id=booking_id)
+    except:
+        messages.error(request, "Invalid Booking")
+        return render(request, "blank.html")
+
+    if booking.user != request.user or not booking.verified:
+        messages.error(request, "Access Denied")
+        return render(request, "blank.html")
+    
+    ticketlist = Ticket.objects.filter(booking=booking)
+
+    if request.method == "POST":
+        for ticket in ticketlist:
+            name = request.POST.get(f"name_{ticket.id}")
+            age = request.POST.get(f"age_{ticket.id}")
+            email = request.POST.get(f"email_{ticket.id}")
+            gender = request.POST.get(f"gender_{ticket.id}")
+
+            ticket.name = name
+            ticket.age = age
+            ticket.email = email
+            ticket.gender = gender
+            ticket.save()
+        
+        messages.success(request, "Passenger Information Updated")
+        return redirect("bookinglist")
+
+    tickets = {}
+    for ticket in ticketlist:
+        if ticket.seat_type not in tickets:
+            tickets[ticket.seat_type] = []
+        tickets[ticket.seat_type].append(ticket)
+
+    return  render(request, "main/passengerinfo.html", context={"tickets":tickets})
+
+def refundView(request, booking_id):
+
+    try:
+        booking = Booking.objects.get(temp_id=booking_id)
+    except Booking.DoesNotExist:
+        messages.error(request, "Invalid Booking")
+        return render(request, "blank.html")
+
+    if booking.user != request.user or not booking.verified:
+        messages.error(request, "Access Denied")
+        return render(request, "blank.html")
+
+    if request.method == "POST":
+        with transaction.atomic():
+            try:
+                booking.revertTicket()
+            except ValidationError:
+                messages.error(request, "Refund Failed")
+                return redirect("bookinglist")
+
+            messages.success(request, "Refund Successful")
+            return redirect("bookinglist")
+
+    return render(request, "main/refund.html", context={"booking":booking})
 
 
 def profileView(request):

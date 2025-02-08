@@ -1,0 +1,32 @@
+services:
+  web:
+    build: ./server
+    command: /bin/bash -c "
+                    python manage.py makemigrations &&
+                    python manage.py migrate &&
+                    python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./bluebus:/usr/src/bluebus/
+    ports:
+      - 8000:8000
+    env_file:
+      - .env
+    depends_on:
+      - db
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=superuser
+      - POSTGRES_PASSWORD=123456
+      - POSTGRES_DB=bluebus
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superuser"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+volumes:
+  postgres_data:
